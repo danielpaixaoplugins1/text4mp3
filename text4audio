@@ -1,0 +1,90 @@
+import tkinter as tk
+from tkinter import ttk, filedialog
+import pyttsx3
+import threading
+
+def texto_para_audio():
+    texto = texto_entry.get("1.0", tk.END).strip()
+    if not texto:
+        status_label.config(text="Por favor, insira algum texto.")
+        return
+
+    genero = genero_var.get()
+    velocidade = velocidade_scale.get()
+    
+    file_path = filedialog.asksaveasfilename(defaultextension=".mp3", filetypes=[("Arquivos MP3", "*.mp3")])
+    if not file_path:
+        return
+
+    def processo_conversao():
+        try:
+            engine = pyttsx3.init()
+            voices = engine.getProperty('voices')
+            
+            # Seleciona a voz com base no gênero
+            voz_selecionada = None
+            for voice in voices:
+                if genero == "Masculino" and not "female" in voice.name.lower():
+                    voz_selecionada = voice.id
+                    break
+                elif genero == "Feminino" and "female" in voice.name.lower():
+                    voz_selecionada = voice.id
+                    break
+            
+            if voz_selecionada:
+                engine.setProperty('voice', voz_selecionada)
+            
+            engine.setProperty('rate', velocidade)
+            
+            engine.save_to_file(texto, file_path)
+            engine.runAndWait()
+            
+            status_label.config(text=f"Arquivo de áudio salvo em: {file_path}")
+        except Exception as e:
+            status_label.config(text=f"Erro ao criar o arquivo de áudio: {str(e)}")
+
+    # Executar a conversão em uma thread separada para não congelar a interface
+    threading.Thread(target=processo_conversao).start()
+
+# Criar janela principal
+root = tk.Tk()
+root.title("Conversor de Texto para Áudio")
+root.geometry("500x450")
+
+# Criar e posicionar widgets
+frame = ttk.Frame(root, padding="10")
+frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+texto_label = ttk.Label(frame, text="Digite ou cole o texto:")
+texto_label.grid(row=0, column=0, sticky=tk.W, pady=5)
+
+texto_entry = tk.Text(frame, height=10, width=50)
+texto_entry.grid(row=1, column=0, columnspan=2, pady=5)
+
+genero_label = ttk.Label(frame, text="Selecione o gênero da voz:")
+genero_label.grid(row=2, column=0, sticky=tk.W, pady=5)
+
+genero_var = tk.StringVar(value="Masculino")
+genero_combo = ttk.Combobox(frame, textvariable=genero_var, values=["Masculino", "Feminino"])
+genero_combo.grid(row=2, column=1, sticky=tk.W, pady=5)
+
+velocidade_label = ttk.Label(frame, text="Velocidade da fala:")
+velocidade_label.grid(row=3, column=0, sticky=tk.W, pady=5)
+
+velocidade_scale = ttk.Scale(frame, from_=100, to=300, orient=tk.HORIZONTAL, length=200)
+velocidade_scale.set(200)  # Valor padrão
+velocidade_scale.grid(row=3, column=1, sticky=tk.W, pady=5)
+
+converter_button = ttk.Button(frame, text="Converter para Áudio", command=texto_para_audio)
+converter_button.grid(row=4, column=0, columnspan=2, pady=10)
+
+status_label = ttk.Label(frame, text="")
+status_label.grid(row=5, column=0, columnspan=2, pady=5)
+
+# Configurar expansão da grade
+root.columnconfigure(0, weight=1)
+root.rowconfigure(0, weight=1)
+frame.columnconfigure(1, weight=1)
+
+# Iniciar o loop principal
+root.mainloop()
